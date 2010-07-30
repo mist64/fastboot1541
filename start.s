@@ -3,21 +3,6 @@
 .segment "LOADADDR"
 .addr *
 
-.segment "VECTOR"
-; Fill the upper 4 vectors on the stack with $0202
-; this should be enough to catch all different C64
-; configurations (i.e. speeders). If not, we can
-; prepend some more 2s.
-.byte 2,2,2,2,2,2,2,2
-
-.segment "START"
-	nop ; waste 3 bytes - what else could we do? :-)
-	nop
-	nop
-; this is $0203
-
-	jmp main
-
 .segment "MAIN"
 
 DATA_OUT := $20 ; bit 5
@@ -97,6 +82,10 @@ memory_execute_code:
 	jsr $d586       ; read sector
 	jmp $0700
 memory_execute_end:
+
+	
+.segment "START"
+	jmp main
 
 ; C64 -> Floppy: direct
 ; Floppy -> C64: inverted
