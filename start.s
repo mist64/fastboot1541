@@ -36,15 +36,7 @@ wait_fast:
 	bvs wait_fast
 ; the fast code is running now!
 
-	jsr fast_in
-	sta $0400
-	jsr fast_in
-	sta $0401
-	jsr fast_in
-	sta $0402
-	jsr fast_in
-	sta $0403
-	rts
+	jmp get_rest
 	
 .if 0
 inf:
@@ -89,19 +81,23 @@ DATA_OUT := $20 ; bit 5
 CLK_OUT  := $10 ; bit 4
 VIC_OUT  := $03 ; bits need to be on to keep VIC happy
 
-fast_in:
+get_rest:
+	ldx #0
+get_rest_loop:
 	bit $DD00
-	bvc fast_in ; wait for CLK=1
+	bvc get_rest_loop ; wait for CLK=1
 	
-	; wait for raster
-	wait_raster:
+; wait for raster
+wait_raster:
 	lda $D012
 	cmp #50
 	bcc wait_raster_end
-	and #$07
-	cmp #$02
-	beq wait_raster
-	wait_raster_end:
+; XXX this doesn't work right yet :( - restrict to border
+;	and #$07
+;	cmp #$02
+;	beq wait_raster
+	jmp wait_raster
+wait_raster_end:
 	
 	lda #VIC_OUT ; CLK=0 DATA=0
 	sta $DD00
@@ -123,7 +119,12 @@ fast_in:
 	sta $DD00
 	pla
 	eor #$03
-	rts
+
+	sta $0400,x
+	inx
+	bne get_rest_loop
+
+	jmp *
 
 ; C64 -> Floppy: direct
 ; Floppy -> C64: inverted

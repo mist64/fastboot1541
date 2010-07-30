@@ -9,14 +9,15 @@ start1541:
 	lda #CLK_OUT
 	sta $1800 ; fast code is running!
 
-	lda #'M'
+	ldx #0
+send_loop:
+	lda $0700,x
+	stx save_x+1
 	jsr send_byte
-	lda #'I'
-	jsr send_byte
-	lda #'S'
-	jsr send_byte
-	lda #'T'
-	jsr send_byte
+save_x:
+	ldx #0
+	inx
+	bne send_loop
 
 	jmp *
 
