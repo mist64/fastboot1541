@@ -4,17 +4,15 @@
 
 .segment "VECTOR"
 
-.byte 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
-.byte 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+.byte 2,2,2,2,2,2,2,2
 
 .segment "START"
 
 start:
+	nop ; waste 3 bytes - what else could we do? :-)
 	nop
 	nop
-	nop
-	lda #$00
-	sta $d020
+; this is $0203
 
 	lda #$0f
 	sta $b9
@@ -25,32 +23,21 @@ start:
 	jsr $fdf9       ;filnam
 	jsr $f34a       ;open
 
+; declare VIC bank select pins (#0 & #1)  as input so we don't
+; switch VIC banks all the time when we write to the IEC bus
 	lda #%00111100
 	sta $DD02 ; DDR port A
 	
 	lda #DATA_OUT | VIC_OUT ; CLK=0 DATA=1
-	sta $DD00
+	sta $DD00 ; we're not ready to receive
 
+; wait until fast loader got loaded from 18/18 and is active
 wait_fast:
 	bit $DD00
 	bvs wait_fast
 ; the fast code is running now!
 
 	jmp get_rest
-	
-.if 0
-inf:
-	lda $DD00
-	lsr
-	lsr
-	lsr
-	lsr
-	lsr
-	lsr
-	tax
-	inc $0400,x
-	jmp inf
-.endif
 	
 memory_execute:
 	 .byte "M-E"
@@ -70,9 +57,6 @@ memory_execute_code:
 memory_execute_end:
 
 .segment "MAIN"
-; declare VIC bank select pins (#0 & #1)  as input so we don't
-; switch VIC banks all the time when we write to the IEC bus
-load:
 
 ;----------------------------------------
 ; fast in byte
@@ -105,20 +89,19 @@ wait_raster_end:
 	pla ; 4 cycles
 	bit $EA ; 3 cycles
 	lda $DD00 ; get 2 bits into bits 6&7
-	lsr a
-	lsr a ; move down by 2 (bits 4&5)
+	lsr
+	lsr ; move down by 2 (bits 4&5)
 	eor $DD00 ; get 2 more bits
-	lsr a
-	lsr a ; move everything down (bits 2-5)
+	lsr
+	lsr ; move everything down (bits 2-5)
 	eor $DD00; get 2 more bits
-	lsr a
-	lsr a ; move everything down (bits 0-5)
+	lsr
+	lsr ; move everything down (bits 0-5)
 	eor $DD00 ; get last 2 bits, now 0-7 are populated
 	pha
 	lda #DATA_OUT | VIC_OUT ; CLK=0 DATA=1
 	sta $DD00
 	pla
-	eor #$03
 
 	sta $0400,x
 	inx
@@ -128,3 +111,7 @@ wait_raster_end:
 
 ; C64 -> Floppy: direct
 ; Floppy -> C64: inverted
+
+
+; 62 bytes transfer code
+; 66 bytes setup code - max 89 (23 left)

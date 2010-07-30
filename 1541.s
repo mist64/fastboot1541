@@ -23,6 +23,7 @@ save_x:
 
 send_byte:
 ; first encode
+	eor #3 ; fix up for receiver side XXX this might be the VIC bank?
 	pha ; save original
 	lsr
 	lsr
