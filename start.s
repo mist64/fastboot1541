@@ -1,14 +1,18 @@
 
-; hack to generate .PRG file with load address as first word
-.segment "LOADADDR"
-.addr *
-
-.segment "MAIN"
-
 DATA_OUT := $20 ; bit 5
 CLK_OUT  := $10 ; bit 4
 VIC_OUT  := $03 ; bits need to be on to keep VIC happy
 
+;----------------------------------------------------------------------
+; hack to generate .PRG file with load address as first word
+;----------------------------------------------------------------------
+.segment "LOADADDR"
+.addr *
+
+;----------------------------------------------------------------------
+; main code, lives around $0180
+;----------------------------------------------------------------------
+.segment "MAIN"
 main:
 	lda #$0f
 	sta $b9
@@ -89,10 +93,3 @@ memory_execute_end:
 
 ; C64 -> Floppy: direct
 ; Floppy -> C64: inverted
-
-
-; 60 bytes transfer code
-; 3+31 bytes setup code +
-; 22 bytes M-E          = 56
-
-; - max 89 (33 left)
