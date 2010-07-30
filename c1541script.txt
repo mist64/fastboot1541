@@ -1,0 +1,2 @@
+format autostart,01
+write "start.prg"
