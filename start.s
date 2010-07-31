@@ -90,7 +90,7 @@ inf:
 .segment "CMD"
 memory_execute:
 	 .byte "M-E"
-	 .word $0488 + 2
+	 .word $0484 + 2
 memory_execute_end:
 
 ;----------------------------------------------------------------------
