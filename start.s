@@ -1,7 +1,12 @@
 
+TARGET := $0400
+TRACK := 18
+
 DATA_OUT := $20 ; bit 5
 CLK_OUT  := $10 ; bit 4
 VIC_OUT  := $03 ; bits need to be on to keep VIC happy
+
+seccnt = 2
 
 ;----------------------------------------------------------------------
 ; Hack to generate .PRG file with load address as first word
@@ -10,27 +15,36 @@ VIC_OUT  := $03 ; bits need to be on to keep VIC happy
 .addr *
 
 ;----------------------------------------------------------------------
-; Receive one block and run it.
+; Send an "M-E" to the 1541 that jumps to floppy code.
+; Then receive one block and run it.
 ; This code lives around $0190.
 ;----------------------------------------------------------------------
 .segment "PART2"
 main:
+	lda #$0f
+	sta $b9
+	sta $b8
+	ldx #<memory_execute
+	ldy #>memory_execute
+	lda #memory_execute_end - memory_execute
+	jsr $fdf9 ; filnam
+	jsr $f34a ; open
+
 	sei
 	lda #VIC_OUT | DATA_OUT ; CLK=0 DATA=1
 	sta $DD00 ; we're not ready to receive
 
-; wait until fast loader got loaded from 18/18 and is active
+; wait until floppy code is active
 wait_fast:
 	bit $DD00
 	bvs wait_fast
 
-	ldx #4
+	lda #sector_table_end - sector_table ; number of sectors
+	sta seccnt
 	ldy #0
 get_rest_loop:
-	stx save_x1+1
-get_rest_loop2:
 	bit $DD00
-	bvc get_rest_loop2 ; wait for CLK=1
+	bvc get_rest_loop ; wait for CLK=1
 	
 ; wait for raster
 wait_raster:
@@ -62,14 +76,12 @@ wait_raster_end:
 	stx $DD00 ; not ready any more, don't start sending
 
 selfmod1:
-	sta $0400,y
+	sta TARGET,y
 	iny
-	bne get_rest_loop2
+	bne get_rest_loop
 
 	inc selfmod1+2
-save_x1:
-	ldx #0
-	dex
+	dec seccnt
 	bne get_rest_loop
 
 inf:
@@ -90,60 +102,57 @@ inf:
 .segment "CMD"
 memory_execute:
 	 .byte "M-E"
-	 .word $0484 + 2
+	 .word $0480 + 2
 memory_execute_end:
 
 ;----------------------------------------------------------------------
-; Send an "M-E" to the 1541 that loads track 18, sector 18 into a
-; buffer and executes it.
-; Then jump to code that receives data.
+; Jump to code that receives data.
 ;----------------------------------------------------------------------
 .segment "START"
-	lda #$0f
-	sta $b9
-	sta $b8
-	ldx #<memory_execute
-	ldy #>memory_execute
-	lda #memory_execute_end - memory_execute
-	jsr $fdf9 ; filnam
-	jsr $f34a ; open
 	jmp main
-
 
 ;----------------------------------------------------------------------
 ;----------------------------------------------------------------------
 ; C64 -> Floppy: direct
 ; Floppy -> C64: inverted
+;----------------------------------------------------------------------
+;----------------------------------------------------------------------
 
 .segment "FCODE"
 
-LE9AE := $E9AE
-
 F_DATA_OUT := $02
 F_CLK_OUT  := $08
+
+sec_index := $05
+ftemp := $1D
 
 start1541:
 	lda #F_CLK_OUT
 	sta $1800 ; fast code is running!
 
-	lda #18 ; track
-	sta $06
 	lda #0 ; sector
-	sta $07
-	lda #0 ; buffer number, i.e. $0300
-	sta $f9
+	sta sec_index
+	sta $f9 ; buffer $0300 for the read
+	lda #TRACK ; track
+	sta $06
 read_loop:
+	ldx sec_index
+	lda sector_table,x
+	inc sec_index
+	bmi end
+	sta $07
 	cli
 	jsr $d586       ; read sector
 	sei
 
-	ldx #0
 send_loop:
+; we can use $f9 as the byte counter, since we'll return it to 0
+; so it holds the correct buffer number "0" when we read the next sector
+	ldx $f9
 	lda $0300,x
-	stx save_x2+1
 
 ; first encode
-	eor #3 ; fix up for receiver side XXX this might be the VIC bank?
+	eor #3 ; fix up for receiver side (VIC bank!)
 	pha ; save original
 	lsr
 	lsr
@@ -174,16 +183,19 @@ L0359:
 	and #$0F
 	sta $1800
 
-	jsr LE9AE ; CLK=1 10 cycles later
+	jsr $E9AE ; CLK=1 10 cycles later
 
-save_x2:
-	ldx #0
-	inx
+	inc $f9
 	bne send_loop
+	beq read_loop
 
-	inc $07
-	jmp read_loop
-	
+end:
+	jmp *
+
 bus_encode_table:
 	.byte %1111, %0111, %1101, %0101, %1011, %0011, %1001, %0001
 	.byte %1110, %0110, %1100, %0100, %1010, %0010, %1000, %0000
+
+sector_table:
+	.byte 0,1,2,3,$FF
+sector_table_end:
