@@ -73,11 +73,26 @@ save_x1:
 	bne get_rest_loop
 
 inf:
-	inc $d020
 	jmp inf
 
 .segment "VECTOR"
+; these bytes will be overwritten by the KERNAL stack while loading
+; let's set them all to "2" so we have a chance that this will work
+; on a modified KERNAL
+	.byte 2,2,2,2,2,2,2,2,2,2,2
+; This is the vector to the start of the code; RTS will jump to $0203
 	.byte 2,2
+; These bytes are on top of the return value on the stack. We could use
+; them for data; or, fill them with "2" so different versions of KERNAL
+; might work
+	.byte 2,2,2,2
+
+.segment "CMD"
+memory_execute:
+	 .byte "M-E"
+	 .word $0488 + 2
+memory_execute_end:
+
 ;----------------------------------------------------------------------
 ; Send an "M-E" to the 1541 that loads track 18, sector 18 into a
 ; buffer and executes it.
@@ -94,10 +109,6 @@ inf:
 	jsr $f34a ; open
 	jmp main
 
-memory_execute:
-	 .byte "M-E"
-	 .word $0490 + 2
-memory_execute_end:
 
 ;----------------------------------------------------------------------
 ;----------------------------------------------------------------------
