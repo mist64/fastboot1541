@@ -73,10 +73,9 @@ save_x1:
 	bne get_rest_loop
 
 inf:
-	inc $d800
+	inc $d020
 	jmp inf
-;	jmp get_rest_loop
-	
+
 ;----------------------------------------------------------------------
 ; Send an "M-E" to the 1541 that loads track 18, sector 18 into a
 ; buffer and executes it.
@@ -95,7 +94,7 @@ inf:
 
 memory_execute:
 	 .byte "M-E"
-	 .word $04A0 + 2
+	 .word $0490 + 2
 memory_execute_end:
 
 ;----------------------------------------------------------------------
@@ -111,26 +110,25 @@ F_DATA_OUT := $02
 F_CLK_OUT  := $08
 
 start1541:
-	sei
 	lda #F_CLK_OUT
 	sta $1800 ; fast code is running!
 
+	lda #18 ; track
+	sta $06
+	lda #0 ; sector
+	sta $07
+	lda #0 ; buffer number, i.e. $0300
+	sta $f9
+read_loop:
+	cli
+	jsr $d586       ; read sector
+	sei
+
 	ldx #0
 send_loop:
-selfmod2:
 	lda $0300,x
 	stx save_x2+1
-	jsr send_byte
-save_x2:
-	ldx #0
-	inx
-	bne send_loop
 
-	inc selfmod2+2
-;	jmp *
-	jmp send_loop
-	
-send_byte:
 ; first encode
 	eor #3 ; fix up for receiver side XXX this might be the VIC bank?
 	pha ; save original
@@ -163,7 +161,15 @@ L0359:
 	and #$0F
 	sta $1800
 
-	jmp LE9AE ; CLK=1 10 cycles later
+	jsr LE9AE ; CLK=1 10 cycles later
+
+save_x2:
+	ldx #0
+	inx
+	bne send_loop
+
+	inc $07
+	jmp read_loop
 	
 bus_encode_table:
 	.byte %1111, %0111, %1101, %0101, %1011, %0011, %1001, %0001
