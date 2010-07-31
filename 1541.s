@@ -1,7 +1,7 @@
 .segment "CODE"
 
-table1 := $0500
-table2 := $0600
+table1 := $0400
+table2 := $0500
 
 LE9AE := $E9AE
 
@@ -30,13 +30,22 @@ table_loop:
 	tax
 	lda bus_encode_table,x ; super-encoded low nybble in A
 	sta table2,y
-
 	iny
 	bne table_loop
 
+read_loop:
+	lda #18 ; track 18, sector 18
+	sta $06
+	lda #0
+	sta $07
+	lda #0 ; buffer number
+	sta $f9
+;	jsr $d586       ; read sector
+
 	ldx #0
 send_loop:
-	lda $0700,x
+selfmod:
+	lda $0300,x
 	stx save_x+1
 	jsr send_byte
 save_x:
@@ -44,8 +53,11 @@ save_x:
 	inx
 	bne send_loop
 
+	inc selfmod+2
+
 ;	jmp *
-	jmp send_loop
+	inc $07
+	jmp read_loop
 	
 send_byte:
 ; first encode
@@ -78,6 +90,9 @@ bus_encode_table:
 ; b3 = !b0
 	.byte %1111, %0111, %1101, %0101, %1011, %0011, %1001, %0001
 	.byte %1110, %0110, %1100, %0100, %1010, %0010, %1000, %0000
+
+
+
 
 
 
