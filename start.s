@@ -27,7 +27,7 @@ wait_fast:
 	ldx #4
 	ldy #0
 get_rest_loop:
-	stx save_x+1
+	stx save_x1+1
 get_rest_loop2:
 	bit $DD00
 	bvc get_rest_loop2 ; wait for CLK=1
@@ -61,13 +61,13 @@ wait_raster_end:
 	ldx #VIC_OUT | DATA_OUT ; CLK=0 DATA=1
 	stx $DD00 ; not ready any more, don't start sending
 
-selfmod:
+selfmod1:
 	sta $0400,y
 	iny
 	bne get_rest_loop2
 
-	inc selfmod+2
-save_x:
+	inc selfmod1+2
+save_x1:
 	ldx #0
 	dex
 	bne get_rest_loop
@@ -95,19 +95,76 @@ inf:
 
 memory_execute:
 	 .byte "M-E"
-	 .word $0200 + memory_execute_code - memory_execute
-	.byte 18 ; track
-memory_execute_code:
-	lda #18 ; track 18, sector 18
-	sta $06
-	sta $07
-	lda #0 ; buffer number
-	sta $f9
-	jsr $d586 ; read sector
-	jmp $0300
+	 .word $04A0 + 2
 memory_execute_end:
 
 ;----------------------------------------------------------------------
 ;----------------------------------------------------------------------
 ; C64 -> Floppy: direct
 ; Floppy -> C64: inverted
+
+.segment "FCODE"
+
+LE9AE := $E9AE
+
+F_DATA_OUT := $02
+F_CLK_OUT  := $08
+
+start1541:
+	sei
+	lda #F_CLK_OUT
+	sta $1800 ; fast code is running!
+
+	ldx #0
+send_loop:
+selfmod2:
+	lda $0300,x
+	stx save_x2+1
+	jsr send_byte
+save_x2:
+	ldx #0
+	inx
+	bne send_loop
+
+	inc selfmod2+2
+;	jmp *
+	jmp send_loop
+	
+send_byte:
+; first encode
+	eor #3 ; fix up for receiver side XXX this might be the VIC bank?
+	pha ; save original
+	lsr
+	lsr
+	lsr
+	lsr ; get high nybble
+	tax ; to X
+	ldy bus_encode_table,x ; super-encoded high nybble in Y
+	ldx #0
+	stx $1800 ; DATA=0, CLK=0 -> we're ready to send!
+	pla
+	and #$0F ; lower nybble
+	tax
+	lda bus_encode_table,x ; super-encoded low nybble in A
+; then wait for C64 to be ready
+L0359:
+	ldx $1800
+	bne L0359; needs all 0
+
+; then send
+	sta $1800
+	asl
+	and #$0F
+	sta $1800
+	tya
+	nop
+	sta $1800
+	asl
+	and #$0F
+	sta $1800
+
+	jmp LE9AE ; CLK=1 10 cycles later
+	
+bus_encode_table:
+	.byte %1111, %0111, %1101, %0101, %1011, %0011, %1001, %0001
+	.byte %1110, %0110, %1100, %0100, %1010, %0010, %1000, %0000
