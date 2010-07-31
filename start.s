@@ -76,6 +76,8 @@ inf:
 	inc $d020
 	jmp inf
 
+.segment "VECTOR"
+	.byte 2,2
 ;----------------------------------------------------------------------
 ; Send an "M-E" to the 1541 that loads track 18, sector 18 into a
 ; buffer and executes it.
