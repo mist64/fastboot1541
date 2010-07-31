@@ -24,8 +24,10 @@ wait_fast:
 	bit $DD00
 	bvs wait_fast
 
-	ldx #0
+	ldx #2
+	ldy #0
 get_rest_loop:
+	sty save_y+1
 	bit $DD00
 	bvc get_rest_loop ; wait for CLK=1
 	
@@ -34,9 +36,10 @@ wait_raster:
 		lda     $D012
         cmp     #50
         bcc     wait_raster_end
-        and     #$07
-        cmp     #$02
-        beq     wait_raster
+;        and     #$07
+ ;       cmp     #$02
+  ;      beq     wait_raster
+  jmp wait_raster
 wait_raster_end:
 	
 	lda #VIC_OUT ; CLK=0 DATA=0
@@ -54,14 +57,27 @@ wait_raster_end:
 	lsr
 	lsr ; move everything down (bits 0-5)
 	eor $DD00 ; get last 2 bits, now 0-7 are populated
+
 	ldy #VIC_OUT | DATA_OUT ; CLK=0 DATA=1
 	sty $DD00 ; not ready any more, don't start sending
 
-	sta $0400,x
-	inx
+save_y:
+	ldy #0
+selfmod:
+	sta $0400,y
+
+
+	iny
 	bne get_rest_loop
 
-	jmp *
+;	inc selfmod+2
+;	dex
+;	bne get_rest_loop
+
+inf:
+	inc $d800
+;	jmp inf
+	jmp get_rest_loop
 	
 ;----------------------------------------------------------------------
 ; Send an "M-E" to the 1541 that loads track 18, sector 18 into a

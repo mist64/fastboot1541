@@ -6,6 +6,7 @@ DATA_OUT := $02
 CLK_OUT  := $08
 
 start1541:
+	sei
 	lda #CLK_OUT
 	sta $1800 ; fast code is running!
 
@@ -19,8 +20,9 @@ save_x:
 	inx
 	bne send_loop
 
-	jmp *
-
+;	jmp *
+	jmp send_loop
+	
 send_byte:
 ; first encode
 	eor #3 ; fix up for receiver side XXX this might be the VIC bank?
