@@ -36,9 +36,9 @@ wait_raster:
 		lda     $D012
         cmp     #50
         bcc     wait_raster_end
-;        and     #$07
- ;       cmp     #$02
-  ;      beq     wait_raster
+        and     #$07
+        cmp     #$02
+        beq     wait_raster
   jmp wait_raster
 wait_raster_end:
 	
