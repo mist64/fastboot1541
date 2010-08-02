@@ -37,14 +37,14 @@ main:
 ; wait until floppy code is active
 wait_fast:
 	bit $DD00
-	bvs wait_fast
+	bvs wait_fast ; wait for CLK=1 (inverted read!)
 
 	lda #sector_table_end - sector_table ; number of sectors
 	sta seccnt
 	ldy #0
 get_rest_loop:
 	bit $DD00
-	bvc get_rest_loop ; wait for CLK=1
+	bvc get_rest_loop ; wait for CLK=0 (inverted read!)
 	
 ; wait for raster
 wait_raster:
@@ -124,7 +124,6 @@ F_DATA_OUT := $02
 F_CLK_OUT  := $08
 
 sec_index := $05
-ftemp := $1D
 
 start1541:
 	lda #F_CLK_OUT
@@ -133,7 +132,7 @@ start1541:
 	lda #0 ; sector
 	sta sec_index
 	sta $f9 ; buffer $0300 for the read
-	lda #TRACK ; track
+	lda #TRACK
 	sta $06
 read_loop:
 	ldx sec_index
@@ -142,7 +141,7 @@ read_loop:
 	bmi end
 	sta $07
 	cli
-	jsr $d586       ; read sector
+	jsr $D586       ; read sector
 	sei
 
 send_loop:
@@ -159,17 +158,17 @@ send_loop:
 	lsr
 	lsr ; get high nybble
 	tax ; to X
-	ldy bus_encode_table,x ; super-encoded high nybble in Y
+	ldy enc_tab,x ; super-encoded high nybble in Y
 	ldx #0
 	stx $1800 ; DATA=0, CLK=0 -> we're ready to send!
 	pla
 	and #$0F ; lower nybble
 	tax
-	lda bus_encode_table,x ; super-encoded low nybble in A
+	lda enc_tab,x ; super-encoded low nybble in A
 ; then wait for C64 to be ready
-L0359:
+wait_c64:
 	ldx $1800
-	bne L0359; needs all 0
+	bne wait_c64; needs all 0
 
 ; then send
 	sta $1800
@@ -192,7 +191,7 @@ L0359:
 end:
 	jmp *
 
-bus_encode_table:
+enc_tab:
 	.byte %1111, %0111, %1101, %0101, %1011, %0011, %1001, %0001
 	.byte %1110, %0110, %1100, %0100, %1010, %0010, %1000, %0000
 
