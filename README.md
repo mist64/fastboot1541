@@ -8,11 +8,13 @@ This is the fastest way to chain-load a second-stage high-speed fastloader, sinc
 
 # Some Details
 
-* The file overwrites stack addresses to gain execution.
+* The file overwrites stack addresses to gain execution, which should make it compatible with most ROM modifications and cartridges.
 * The C64 part sits just above the stack.
 * The 1541 part executes in-place in the buffer that was written when loading the program for the C64.
 * The C64 and the 1541 part contain a simple bus protocol speeder that allows the screen to be on.
 * You should hand-edit the second byte of the resulting sector on disk so that only the C64-specific bytes are actually transfered.
+* Put this sector on track 18 to save some more time.
+* Choose the optimal interleave for the chainloaded data. Maybe you can fit it on track 18 as well.
 
 # More Details
 
