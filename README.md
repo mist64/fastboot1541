@@ -20,7 +20,7 @@ The blog post at [pagetable.com/?p=568](http://www.pagetable.com/?p=568) explain
 
 # License
 
-Do anything you want with it, but giving credit and emailing me about its use if very much appreciated.
+Do anything you want with it, but giving credit and emailing me about its use is very much appreciated.
 
 Improvements and corrections welcome!
 
